@@ -45,10 +45,13 @@ func TestRateLimitByKey(t *testing.T) {
 
 	for i := 0; i < 100; i++ {
 
+		slog.Debug("-------")
+
 		randKey := rand.Intn(9)
 
 		// Reinicia a posição do slice para reutilização
-		if uuidKeyList[randKey].ttl < time.Now().UnixMilli() {
+		if uuidKeyList[randKey].ttl > 0 && time.Now().UnixMilli() > uuidKeyList[randKey].ttl {
+			slog.Debug("[TEST]", "msg", "clear por ttl", "key", uuidKeyList[randKey].key, "ttl", uuidKeyList[randKey].ttl, "now", time.Now().UnixMilli())
 			uuidKeyList[randKey].key = ""
 			uuidKeyList[randKey].count = 0
 			uuidKeyList[randKey].timestsamp = 0
@@ -57,23 +60,39 @@ func TestRateLimitByKey(t *testing.T) {
 
 		// Adiciona ao slice a chave, caso a posição esteja vazia
 		if uuidKeyList[randKey].key == "" {
+			slog.Debug("[TEST]", "randKey", randKey, "msg", "posição vazia")
 			uuidKeyList[randKey].key = uuid.New().String()
-			uuidKeyList[randKey].count = 1
+			uuidKeyList[randKey].count = 0
 			uuidKeyList[randKey].timestsamp = time.Now().UnixMilli()
 			uuidKeyList[randKey].ttl = 0
 		}
 
+		slog.Debug("[TEST]", "key", uuidKeyList[randKey].key)
+		slog.Debug("[TEST]", "count", uuidKeyList[randKey].count)
+		slog.Debug("[TEST]", "timestsamp", uuidKeyList[randKey].timestsamp)
+		slog.Debug("[TEST]", "ttl", uuidKeyList[randKey].ttl)
+
 		sts, err := usecase.RateLimitByKey(redisRepo, uuidKeyList[randKey].key, requestPerSecond, blockingTime)
 		assert.Nil(t, err)
 
+		slog.Debug("[TEST]", "msg", "NOW", "timestsamp", time.Now().UnixMilli())
+
 		if time.Now().UnixMilli()-uuidKeyList[randKey].timestsamp <= 1000 {
+			slog.Debug("[TEST]", "msg", "entrou dentro de 1 segundo", "requestPerSecond", requestPerSecond, "uuidKeyList[randKey].count+1", uuidKeyList[randKey].count+1)
 			if uuidKeyList[randKey].count+1 >= requestPerSecond {
 				uuidKeyList[randKey].count = -1
 				uuidKeyList[randKey].ttl = time.Now().UnixMilli() + (blockingTime * int64(time.Duration(time.Millisecond)))
-				slog.Debug("", "millisecond", int64(time.Duration(time.Millisecond)))
+				slog.Debug("[TEST]", "msg", "ttl configurado", "ttl", uuidKeyList[randKey].ttl, "count", uuidKeyList[randKey].count)
+				continue
 			}
-			uuidKeyList[randKey].count = uuidKeyList[randKey].count + 1
+
+			if uuidKeyList[randKey].count >= 0 {
+				uuidKeyList[randKey].count = uuidKeyList[randKey].count + 1
+				slog.Debug("[TEST]", "msg", "aumento do contador", "key", uuidKeyList[randKey].key, "count", uuidKeyList[randKey].count)
+			}
+
 		} else {
+			slog.Debug("[TEST]", "msg", "clear por passar de 1 segundo entre as chamadas", "key", uuidKeyList[randKey].key)
 			uuidKeyList[randKey].key = ""
 			uuidKeyList[randKey].count = 0
 			uuidKeyList[randKey].timestsamp = 0
@@ -88,7 +107,7 @@ func TestRateLimitByKey(t *testing.T) {
 			assert.False(t, sts)
 		}
 
-		time.Sleep(time.Duration(int(time.Millisecond) * rand.Intn(100)))
+		time.Sleep(time.Duration(int(time.Millisecond) * rand.Intn(300)))
 	}
 
 	fmt.Printf("%+v\n", uuidKeyList)
