@@ -8,17 +8,17 @@ import (
 	"github.com/go-redis/redis"
 )
 
-type RedisServer struct {
+type redisServer struct {
 	client *redis.Client
 }
 
-func NewRedisCahe(client *redis.Client) *RedisServer {
-	return &RedisServer{
+func NewRedisCahe(client *redis.Client) *redisServer {
+	return &redisServer{
 		client: client,
 	}
 }
 
-func (r *RedisServer) Set(key string, value any, expiration int32) (string, error) {
+func (r *redisServer) Set(key string, value any, expiration int32) (string, error) {
 	err := r.client.Set(key, value, time.Duration(expiration)*time.Second).Err()
 	if err != nil {
 		return "", err
@@ -33,7 +33,7 @@ func (r *RedisServer) Set(key string, value any, expiration int32) (string, erro
 	return val, nil
 }
 
-func (r *RedisServer) Increment(key string, expiration time.Duration) (int64, error) {
+func (r *redisServer) Increment(key string, expiration time.Duration) (int64, error) {
 	val, err := r.client.Incr(key).Result()
 	if err != nil {
 		return 0, err
@@ -47,7 +47,7 @@ func (r *RedisServer) Increment(key string, expiration time.Duration) (int64, er
 	return val, nil
 }
 
-func (r *RedisServer) Get(key string) (string, error) {
+func (r *redisServer) Get(key string) (string, error) {
 	val, err := r.client.Get(key).Result()
 	if err != nil {
 		if err.Error() == "redis: nil" {
@@ -58,10 +58,14 @@ func (r *RedisServer) Get(key string) (string, error) {
 	return val, nil
 }
 
-func (r *RedisServer) Del(key string) (int64, error) {
+func (r *redisServer) Del(key string) (int64, error) {
 	val, err := r.client.Del(key).Result()
 	if err != nil {
 		return 0, err
 	}
 	return val, nil
+}
+
+func (r *redisServer) Debug(val string) string {
+	return "[REDIS]: " + val
 }

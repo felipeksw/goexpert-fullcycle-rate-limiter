@@ -11,30 +11,23 @@ import (
 	"github.com/felipeksw/goexpert-fullcycle-rate-limiter/pgk/config"
 )
 
-/*
 type rateLimit struct {
-	configuration     *config.Config
-	repository *repository.RateLimiterStorage
+	configuration *config.Config
+	repository    any
 }
 
-func NewRateLimit(cnf *config.Config, rep *repository.RateLimiterStorage) *rateLimit {
+func NewRateLimit(configuration *config.Config, repository any) *rateLimit {
 	return &rateLimit{
-		configuration:     cnf,
-		repository: rep,
+		configuration: configuration,
+		repository:    repository,
 	}
-}
-*/
-
-type RateLimit struct {
-	Configuration *config.Config
-	Repository    *repository.RedisServer
 }
 
 type erroDto struct {
 	Msg string `json:"msg"`
 }
 
-func (rl *RateLimit) RateLimiter(next http.Handler) http.Handler {
+func (rl *rateLimit) RateLimiter(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		v := strings.Split(r.RemoteAddr, ":")
@@ -51,19 +44,19 @@ func (rl *RateLimit) RateLimiter(next http.Handler) http.Handler {
 
 		if ip != "" {
 			key = ip
-			rps = rl.Configuration.RequestPerSecondPerIp
-			blk = rl.Configuration.BlockingTimeIp
+			rps = rl.configuration.RequestPerSecondPerIp
+			blk = rl.configuration.BlockingTimeIp
 		}
 
-		if apiKey != "" && rl.Configuration.RrequestPerSecondPerApiKey >= rl.Configuration.RequestPerSecondPerIp {
+		if apiKey != "" && rl.configuration.RrequestPerSecondPerApiKey >= rl.configuration.RequestPerSecondPerIp {
 			key = apiKey
-			rps = rl.Configuration.RrequestPerSecondPerApiKey
-			blk = rl.Configuration.BlockingTimeApiKey
+			rps = rl.configuration.RrequestPerSecondPerApiKey
+			blk = rl.configuration.BlockingTimeApiKey
 		}
 
 		if key != "" {
 			slog.Debug("[RateLimiter]", "key", key, "ReqPerSec", rps, "BlockingTime", blk)
-			sts, err := usecase.RateLimitByKey(rl.Repository, key, rps, blk)
+			sts, err := usecase.RateLimitByKey(rl.repository.(repository.RateLimiterStorage), key, rps, blk)
 			if err != nil {
 				slog.Error("[RateLimiter]", "msg", err.Error())
 				w.Header().Add("Content-Type", "application/json")

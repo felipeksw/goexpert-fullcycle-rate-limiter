@@ -8,9 +8,10 @@ import (
 	"github.com/felipeksw/goexpert-fullcycle-rate-limiter/internal/infra/repository"
 )
 
-func RateLimitByKey(repo *repository.RedisServer, key string, requestPerSecond int64, blockingTime int64) (bool, error) {
+func RateLimitByKey(repo repository.RateLimiterStorage, key string, requestPerSecond int64, blockingTime int64) (bool, error) {
 
 	slog.Debug("[RateLimitByKey]", "msg", "entrou no RateLimitByKey")
+	slog.Debug("[RateLimitByKey]", "msg", repo.Debug("repositorio"))
 
 	// Recupera o contador da chave no cache
 	cntS, err := repo.Get(key + ":cnt")
@@ -18,7 +19,7 @@ func RateLimitByKey(repo *repository.RedisServer, key string, requestPerSecond i
 		slog.Error("[RateLimitByKey]", "GET", "cnt", "key", key, "msg", err.Error())
 		return false, err
 	}
-	slog.Debug("[RateLimitByKey]", "cntS", cntS)
+	slog.Debug("[RateLimitByKey]", "cntS", cntS, "key", key)
 
 	// Se não localizar o contador, adiciona a chave um contador e timestamp, contando o acesso atual
 	if cntS == "" {
