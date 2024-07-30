@@ -2,6 +2,7 @@ services:
 
   redis:
     image: redis:latest
+    container_name: redis
     restart: always
     ports:
       - "6379:6379"
@@ -12,3 +13,19 @@ services:
       - REDIS_PASSWORD=my-password
       - REDIS_PORT=6379
       - REDIS_DATABASES=16
+
+  ratelimiter:
+    image: golang:latest
+    container_name: ratelimiter
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/app
+    command: >
+      sh -c "
+      cd /app && 
+      go mod tidy &&
+      GOOS=linux CGO_ENABLED=0 go build -ldflags='-w -s' -o ./build/ratelimiter ./cmd/ratelimiter/main.go &&
+      ./build/ratelimiter"
+    depends_on:
+      - redis      
